@@ -8,27 +8,20 @@
 #include <getopt.h>
 #include <string.h>
 #include <ctype.h>
+#include <sys/socket.h>
 
 #include "fs.h"
 #include "sync.h"
+#include "../unix.h"
 
 #include <sys/time.h>
 
+#define MAXLINE 512
 
 
-
-pthread_t *tid;
-
-
-
-int numberThreads;   
 tecnicofs* fs;                  
 
-char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE];
-/* index that determines where to insert and remove commands from the buffer */
-int prodptr = 0, consptr = 0;
 
-FILE *input;
 FILE *output;
 
 /******************************************************************************
@@ -43,158 +36,21 @@ static void displayUsage (const char* appName){
 
 
 static void parseArgs (long argc, char* const argv[]){
-    if (argc != 5) {
+    if (argc != 4) {
         fprintf(stderr, "Invalid format:\n");
         displayUsage(argv[0]);
     }
 }
 
-void insertCommand(char * line) {
-    strcpy(inputCommands[prodptr], line);
-     /* Incrementing a variable in a cyle */
-    prodptr = (prodptr+1) % MAX_COMMANDS;
-}
-
-void removeCommand(char * command) {
-    strcpy(command, inputCommands[consptr]);
-    consptr = (consptr+1) % MAX_COMMANDS;
-}
 
 void errorParse(){
     fprintf(stderr, "Error: command invalid\n");
     //exit(EXIT_FAILURE);
 }
 
-void * processInput(){
-    char line[MAX_INPUT_SIZE];
-    /* instead of stdin, it is used a file as input */
-    while (fgets(line, sizeof(line)/sizeof(char), input)) {
-        char token;
-        char name1[MAX_INPUT_SIZE];
-        char name2[MAX_INPUT_SIZE];
-        int numTokens = sscanf(line, "%c %s %s", &token, name1, name2);
-        /* locks producer semaphore with validation of value */
-        SEM_WAIT(produce);
-        /* perform minimal validation */
-        if (numTokens < 1)
-            continue;
-
-        switch (token) {
-            case 'c':
-            case 'l':
-            case 'd':
-            case 'r':
-                if(numTokens != 2 && numTokens != 3) {
-                    errorParse();
-                    return NULL;
-                }
-                LOCK1();
-                insertCommand(line);
-                UNLOCK1();
-                /* unlocks consumer semaphore with validation of value */
-                SEM_POST(consume);
-                break;
-            case '#':
-                break;
-            default: { /* error */
-                errorParse();
-            }
-        }
-    }
-    LOCK1();
-    strcpy(line, "\0");
-     /* inserts "\0" in the buffer when file is out of commands */
-    insertCommand(line);
-    UNLOCK1();
-    SEM_POST(consume);
-    return NULL;
-}
 
 
-void * applyCommands(){
-    char token;
-    char name1[MAX_INPUT_SIZE];
-    char name2[MAX_INPUT_SIZE];
-    int numTokens;
-    char command[MAX_INPUT_SIZE];
-    int searchResult1;
-    int searchResult2;
-    int iNumber;
 
-    while(1) {
-        /* locks consumer semaphore with validation of value */
-        SEM_WAIT(consume);
-        LOCK2();
-        /* removes command from buffer to execute */
-        removeCommand(command);
-        if (!strcmp(command, "\0")) {
-            /* makes consumer's index stop incrementing */
-            consptr = (consptr - 1) % MAX_COMMANDS;
-            UNLOCK2();
-            SEM_POST(consume);
-            return NULL;
-        }
-        UNLOCK2();
-        LOCK2();
-        numTokens = sscanf(command, "%c %s %s", &token, name1, name2);
-        if ((numTokens == 2 && token == 'r') || (numTokens == 3 && token != 'r')) {
-            fprintf(stderr, "Error: invalid command in Queue\n");
-            exit(EXIT_FAILURE);
-        }
-        /*If command is 'c', obtaining new iNumber will need to stay sequencial*/
-        if (token != 'c') {
-            UNLOCK2();
-            /* unlocks producer semaphore with validation of value */
-            SEM_POST(produce);
-        }
-        switch (token) {
-            case 'c':
-                iNumber = obtainNewInumber(fs);
-                UNLOCK2();
-                SEM_POST(produce);
-                /* Writing lock because bst will change */
-                create(fs, name1, iNumber);
-                break;
-            case 'l':
-                /* Reading lock because bst can be searched in parallel */
-                searchResult1 = lookup(fs, name1);
-                if(!searchResult1)
-                    printf("%s not found\n", name1);
-                else
-                    printf("%s found with inumber %d\n", name1, searchResult1);
-                break;
-            case 'd':
-                /* Writing lock, same reason as 'c' */
-                delete(fs, name1);
-                break;
-            case 'r':
-                searchResult1 = lookup(fs, name1);
-                searchResult2 = lookup(fs, name2);
-                if(searchResult1 && !searchResult2)
-                    exchange(fs, name1, name2, searchResult1);
-                break;
-            default: { /* error */
-                fprintf(stderr, "Error: command to apply\n");
-                exit(EXIT_FAILURE);
-            }
-        }
-    }
-    return NULL;
-}
-
-void execute() {
-    int i;
-    for(i = 1; i < numberThreads+1; i++) {
-        /* Creates threads in order to execute applyCommands in parallel*/
-        if(pthread_create(&tid[i], NULL, applyCommands, NULL) == 0) {
-            printf("Criada a tarefa %ld\n", tid[i]);
-        }
-        else {
-            printf("Erro na criacao da tarefa\n");
-            exit(1);
-        }
-    }
-}
 
 /*prints time*/
 void execution_time(struct timeval start, struct timeval end) {
@@ -202,6 +58,22 @@ void execution_time(struct timeval start, struct timeval end) {
     time = (time + (end.tv_usec - start.tv_usec)) * 1e-6; 
 
 	printf("TecnicoFS completed in %.4f seconds.\n", time);
+}
+
+
+str_echo(int sockfd){
+    int n;
+    char line[MAXLINE];
+    for (;;) {
+        /* Lê uma linha do socket */
+        n = readline(sockfd, line, MAXLINE);
+        if (n == 0)
+            return;
+        else if (n < 0)
+            err_dump("str_echo: readline error");
+        if (write(sockfd, line, n)!= n)
+            err_dump("str_echo: write error");
+    }
 }
 
 
@@ -213,71 +85,80 @@ void execution_time(struct timeval start, struct timeval end) {
 int main(int argc, char* argv[]) {
     struct timeval start, end;
     int i;
+    char *nomesocket;
+    int sockfd, newsockfd, clilen, childpid, servlen;
+    struct sockaddr_un cli_addr, serv_addr;
+
 
     parseArgs(argc, argv);
 
     /*using files given in arguments*/
-    input = fopen(argv[1], "r");
-    if (input == NULL) {
-        printf("input file open failure\n");
-        exit(EXIT_FAILURE);
-    }
+    strcpy(nomesocket,argv[1]);
     output = fopen(argv[2], "w");
-    if (output == NULL) {
+    if (output == NULL) {   
         printf("output file open failure\n");
         exit(EXIT_FAILURE);
     }
-    if(argc == 5) {
-        #if defined(MUTEX) || defined(RWLOCK)
-            numberThreads = atoi(argv[3]);
-        /* forces numberThreads to be one when there is no syncronization */
-        #else
-            numberThreads = 1;
-        #endif
-        if (numberThreads <= 0) {
-            printf("invalid number of threads\n");
-            exit(EXIT_FAILURE);
-        }
-        numberBuckets = atoi(argv[4]);
-        if(numberBuckets <= 0){
-            printf("invalid number of buckets\n");
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    fs = new_tecnicofs();
-
-    /*using malloc to give more freedom in the amount of threads possible*/
-    tid = (pthread_t*) malloc((numberThreads+1)*sizeof(pthread_t));
-
-    /*verify if malloc was successful*/
-    if (!tid) {
-        printf("thread malloc failure\n");  
+    numberBuckets = atoi(argv[4]);
+    if(numberBuckets <= 0){
+        printf("invalid number of buckets\n");
         exit(EXIT_FAILURE);
     }
 
+    fs = new_tecnicofs();
     /*initializes the thread lockers and semaphores needed with validation */
     init();
     
     /*counting just the execution time*/
     gettimeofday(&start, NULL);
 
-    if(pthread_create(&tid[0], NULL, processInput, NULL) == 0)
-        printf("Criada a tarefa produtora %ld\n", tid[0]);
-    else {
-        printf("Erro na criacao da tarefa\n");
-        exit(1);
-    }
-    execute();
-    /* Ensure that threads wait for each other */
-    for(i = 0; i < numberThreads+1; i++) {
-        if(pthread_join(tid[i], NULL) == 0)
-            printf("Join da tarefa %ld\n", tid[i]);
-        else {
-            printf("Erro no join da tarefa\n");
-            exit(1);
+
+
+
+
+    /* Cria socket stream */
+    if ((sockfd = socket(AF_UNIX,SOCK_STREAM,0) ) < 0)
+        err_dump("server: can't open stream socket");
+
+    /* Elimina o nome, para o caso de já existir.*/
+    unlink(UNIXSTR_PATH);
+
+    /* O nome serve para que os clientes possam identificar o servidor */
+    bzero((char *)&serv_addr, sizeof(serv_addr));
+
+    serv_addr.sun_family = AF_UNIX;
+    strcpy(serv_addr.sun_path, UNIXSTR_PATH);
+    servlen = strlen(serv_addr.sun_path) + sizeof(serv_addr.sun_family);
+
+    if (bind(sockfd, (struct sockaddr *) &serv_addr, servlen) < 0)
+        err_dump("server, can't bind local address");
+
+    listen(sockfd, 5);
+
+
+
+    for (;;) {
+        clilen = sizeof(cli_addr);
+        newsockfd =accept(sockfd,(struct sockaddr *) &cli_addr, &clilen);
+        if (newsockfd < 0)
+            err_dump("server: accept error");
+        /* Lança processo filho para tratar do cliente */
+        if ((childpid =fork()) < 0)
+            err_dump("server: fork error");
+        else if (childpid == 0) {
+            close(sockfd);
+            str_echo(newsockfd);
+            exit(0);
         }
+        /* Processo pai. Fecha newsockfd que não utiliza */
+        close(newsockfd);
     }
+    
+
+
+
+
+ 
     gettimeofday(&end, NULL);
 
     /*destroys the lockers*/
@@ -287,13 +168,11 @@ int main(int argc, char* argv[]) {
     print_tecnicofs_tree(output, fs);
 
     /*closing files*/
-    fclose(input);
     fclose(output);
 
     execution_time(start, end);
 
     free_tecnicofs(fs);
-    free(tid);
 
     exit(EXIT_SUCCESS);
 }

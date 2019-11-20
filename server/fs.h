@@ -2,7 +2,7 @@
 #define FS_H
 #include "sync.h"
 #include "lib/bst.h"
-#include "hash/hash.h"
+#include "lib/hash.h"
 
 typedef struct tecnicofs {
     node **bstRoot;
