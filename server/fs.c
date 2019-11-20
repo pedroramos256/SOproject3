@@ -47,7 +47,7 @@ void create(tecnicofs* fs, char *name, int inumber){
 	index = hash(name, numberBuckets);
 	WRLOCK(index);
 	fs->bstRoot[index] = insert(fs->bstRoot[index], name, inumber);
-	RWUNLOCK(index);
+	UNLOCK(index);
 }
 
 void delete(tecnicofs* fs, char *name){
@@ -55,7 +55,7 @@ void delete(tecnicofs* fs, char *name){
 	index = hash(name, numberBuckets);
 	WRLOCK(index);
 	fs->bstRoot[index] = remove_item(fs->bstRoot[index], name);
-	RWUNLOCK(index);
+	UNLOCK(index);
 }
 
 int lookup(tecnicofs* fs, char *name){
@@ -64,7 +64,7 @@ int lookup(tecnicofs* fs, char *name){
 	RDLOCK(index);
 	node *searchNode = search(fs->bstRoot[index], name);
 	if ( searchNode ) inumber = searchNode->inumber;
-	RWUNLOCK(index);
+	UNLOCK(index);
 	return inumber;								
 }
 
@@ -77,7 +77,7 @@ void exchange(tecnicofs* fs, char* name1, char* name2, int inumber) {
 		WRLOCK(index1);
 		fs->bstRoot[index1] = remove_item(fs->bstRoot[index1], name1);
 		fs->bstRoot[index1] = insert(fs->bstRoot[index1], name2, inumber);
-		RWUNLOCK(index1);
+		UNLOCK(index1);
 	}
 	/*calc min and max to keep locking order always the same (ascending order)*/
 	else {
@@ -85,8 +85,8 @@ void exchange(tecnicofs* fs, char* name1, char* name2, int inumber) {
 		WRLOCK(max(index1,index2));
 		fs->bstRoot[index1] = remove_item(fs->bstRoot[index1], name1);
 		fs->bstRoot[index2] = insert(fs->bstRoot[index2], name2, inumber);
-		RWUNLOCK(max(index1,index2));
-		RWUNLOCK(min(index1,index2));
+		UNLOCK(max(index1,index2));
+		UNLOCK(min(index1,index2));
 	}
 	
 }

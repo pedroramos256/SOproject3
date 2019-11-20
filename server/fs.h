@@ -3,6 +3,7 @@
 #include "sync.h"
 #include "lib/bst.h"
 #include "lib/hash.h"
+#include "lib/inodes.h"
 
 typedef struct tecnicofs {
     node **bstRoot;

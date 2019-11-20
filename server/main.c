@@ -29,6 +29,11 @@ FILE *output;
  *****************************************************************************/
 
 
+void err_dump(char * str){
+    printf("%s\n",str);
+    exit(EXIT_FAILURE);
+}
+
 static void displayUsage (const char* appName){
     printf("Usage: %s\n", appName);
     exit(EXIT_FAILURE);
@@ -61,12 +66,12 @@ void execution_time(struct timeval start, struct timeval end) {
 }
 
 
-str_echo(int sockfd){
+void str_echo(int sockfd){
     int n;
     char line[MAXLINE];
     for (;;) {
         /* Lê uma linha do socket */
-        n = readline(sockfd, line, MAXLINE);
+        n = read(sockfd,line, MAXLINE);
         if (n == 0)
             return;
         else if (n < 0)
@@ -84,25 +89,24 @@ str_echo(int sockfd){
 
 int main(int argc, char* argv[]) {
     struct timeval start, end;
-    int i;
     char *nomesocket;
-    int sockfd, newsockfd, clilen, childpid, servlen;
+    int sockfd, newsockfd, childpid, servlen;
     struct sockaddr_un cli_addr, serv_addr;
+    unsigned int clilen;
 
 
     parseArgs(argc, argv);
 
     /*using files given in arguments*/
+    nomesocket = (char *)malloc(sizeof(char)*strlen(argv[1]));
     strcpy(nomesocket,argv[1]);
     output = fopen(argv[2], "w");
     if (output == NULL) {   
-        printf("output file open failure\n");
-        exit(EXIT_FAILURE);
+        err_dump("output file open failure");
     }
     numberBuckets = atoi(argv[4]);
     if(numberBuckets <= 0){
-        printf("invalid number of buckets\n");
-        exit(EXIT_FAILURE);
+        err_dump("invalid number of buckets");
     }
 
     fs = new_tecnicofs();
