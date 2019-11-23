@@ -1,4 +1,3 @@
-# Makefile, versao 1
 # Sistemas Operativos, DEI/IST/ULisboa 2019-20
 
 SOURCES = main.c fs.c sync.c
@@ -8,7 +7,6 @@ CC   = gcc
 LD   = gcc
 CFLAGS =-Wall -std=gnu99 -I../ -g
 LDFLAGS=-lm -pthread
-TARGETS = tecnicofs
 
 .PHONY: all clean
 

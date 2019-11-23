@@ -1,10 +1,23 @@
 /* Cliente do tipo socket stream.*/
-#include "unix.h"
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <getopt.h>
+#include <string.h>
+#include <ctype.h>
+#include <unistd.h>
+#include "tecnicofs-client-api.h"
+
 #define MAXLINE 512
+
+
+void err_dump(char * str){
+    printf("%s\n",str);
+    exit(EXIT_FAILURE);
+}
+
 /*Lê string de fp e envia para sockfd. Lê string de sockfd e envia para stdout*/
-str_cli(FILE *fp,int sockfd){
+void str_cli(FILE *fp,int sockfd){
     int n;
     char sendline[MAXLINE], recvline[MAXLINE+1];
     while(fgets(sendline, MAXLINE, fp) != NULL){
@@ -12,19 +25,20 @@ str_cli(FILE *fp,int sockfd){
         n = strlen(sendline);
         if (write(sockfd, sendline, n) != n)
             err_dump("str_cli:write error on socket");
-            /* Tenta ler string de sockfd.Note-se que tem de terminar a string com \0 */
-            n = readline(sockfd, recvline, MAXLINE);
-            if (n<0) err_dump("str_cli:readline error");
-            recvline[n] = 0;
-            /* Envia a string para stdout */
-            fputs(recvline, stdout);
-        }
+
+        /* Tenta ler string de sockfd.Note-se que tem de terminar a string com \0 */
+        n = read(sockfd, recvline, MAXLINE);
+        if (n<0) err_dump("str_cli:readline error");
+        recvline[n] = 0;
+        /* Envia a string para stdout */
+        fputs(recvline, stdout);
+    }
     if (ferror(fp))
         err_dump("str_cli: error reading file");
 }
 
 
-main(void) {
+int main(void) {
     int sockfd, servlen;
     struct sockaddr_un serv_addr;
     /* Cria socket stream */

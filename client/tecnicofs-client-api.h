@@ -2,7 +2,8 @@
 #define TECNICOFS_CLIENT_API_H
 
 #include "tecnicofs-api-constants.h"
-
+#include <sys/socket.h>
+#include "../unix.h"
 
 int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions);
 int tfsDelete(char *filename);
