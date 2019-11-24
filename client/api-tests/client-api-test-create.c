@@ -1,12 +1,8 @@
-#include "../client/tecnicofs-api-constants.h"
 #include "../client/tecnicofs-client-api.h"
-#include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
 
-
 int main(int argc, char** argv) {
-     if (argc != 2) {
+    if (argc != 2) {
         printf("Usage: %s sock_path\n", argv[0]);
         exit(0);
     }

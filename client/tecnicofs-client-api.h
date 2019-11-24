@@ -3,6 +3,12 @@
 
 #include "tecnicofs-api-constants.h"
 #include <sys/socket.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <getopt.h>
+#include <string.h>
+#include <ctype.h>
+#include <unistd.h>
 #include "../unix.h"
 
 int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions);

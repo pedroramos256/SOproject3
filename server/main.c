@@ -89,7 +89,7 @@ void str_echo(int sockfd){
 
 int main(int argc, char* argv[]) {
     struct timeval start, end;
-    char *nomesocket;
+    char *total_path;
     int sockfd, newsockfd, childpid, servlen;
     struct sockaddr_un cli_addr, serv_addr;
     unsigned int clilen;
@@ -97,9 +97,9 @@ int main(int argc, char* argv[]) {
     parseArgs(argc, argv);
 
     /*using files given in arguments*/
-    nomesocket = (char *)malloc(sizeof(char)*(strlen(argv[1])+5));
-    strcpy(nomesocket,"/tmp/");
-    strcat(nomesocket,argv[1]);
+    total_path = (char *)malloc(sizeof(char)*(strlen(argv[1])+5));
+    strcpy(total_path,"/tmp/");
+    strcat(total_path,argv[1]);
     output = fopen(argv[2], "w");
     if (output == NULL) {   
         err_dump("output file open failure");
@@ -125,13 +125,13 @@ int main(int argc, char* argv[]) {
         err_dump("server: can't open stream socket");
 
     /* Elimina o nome, para o caso de já existir.*/
-    unlink(nomesocket);
+    unlink(total_path);
 
     /* O nome serve para que os clientes possam identificar o servidor */
     bzero((char *)&serv_addr, sizeof(serv_addr));
 
     serv_addr.sun_family = AF_UNIX;
-    strcpy(serv_addr.sun_path, nomesocket);
+    strcpy(serv_addr.sun_path, total_path);
     servlen = strlen(serv_addr.sun_path) + sizeof(serv_addr.sun_family);
 
     if (bind(sockfd, (struct sockaddr *) &serv_addr, servlen) < 0)
