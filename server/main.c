@@ -116,30 +116,24 @@ int main(int argc, char* argv[]) {
     /*counting just the execution time*/
     gettimeofday(&start, NULL);
 
-
-
-
-
     /* Cria socket stream */
     if ((sockfd = socket(AF_UNIX,SOCK_STREAM,0) ) < 0)
         err_dump("server: can't open stream socket");
 
     /* Elimina o nome, para o caso de já existir.*/
-    unlink(UNIXSTR_PATH);
+    unlink("tmp/");
 
     /* O nome serve para que os clientes possam identificar o servidor */
     bzero((char *)&serv_addr, sizeof(serv_addr));
 
     serv_addr.sun_family = AF_UNIX;
-    strcpy(serv_addr.sun_path, UNIXSTR_PATH);
+    strcpy(serv_addr.sun_path, );
     servlen = strlen(serv_addr.sun_path) + sizeof(serv_addr.sun_family);
 
     if (bind(sockfd, (struct sockaddr *) &serv_addr, servlen) < 0)
         err_dump("server, can't bind local address");
 
-    listen(sockfd, 5);
-
-
+    listen(sockfd, 10);
 
     for (;;) {
         clilen = sizeof(cli_addr);
@@ -147,7 +141,7 @@ int main(int argc, char* argv[]) {
         if (newsockfd < 0)
             err_dump("server: accept error");
         /* Lança processo filho para tratar do cliente */
-        if ((childpid =fork()) < 0)
+        if ((childpid = fork()) < 0)
             err_dump("server: fork error");
         else if (childpid == 0) {
             close(sockfd);
@@ -157,11 +151,6 @@ int main(int argc, char* argv[]) {
         /* Processo pai. Fecha newsockfd que não utiliza */
         close(newsockfd);
     }
-    
-
-
-
-
  
     gettimeofday(&end, NULL);
 
