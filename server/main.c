@@ -47,15 +47,10 @@ static void parseArgs (long argc, char* const argv[]){
     }
 }
 
-
 void errorParse(){
     fprintf(stderr, "Error: command invalid\n");
     //exit(EXIT_FAILURE);
 }
-
-
-
-
 
 /*prints time*/
 void execution_time(struct timeval start, struct timeval end) {
@@ -94,17 +89,17 @@ int main(int argc, char* argv[]) {
     struct sockaddr_un cli_addr, serv_addr;
     unsigned int clilen;
 
-
     parseArgs(argc, argv);
 
     /*using files given in arguments*/
-    nomesocket = (char *)malloc(sizeof(char)*strlen(argv[1]));
-    strcpy(nomesocket,argv[1]);
+    nomesocket = (char *)malloc(sizeof(char)*(strlen(argv[1])+5));
+    strcpy(nomesocket,"/tmp/");
+    strcat(nomesocket,argv[1]);
     output = fopen(argv[2], "w");
     if (output == NULL) {   
         err_dump("output file open failure");
     }
-    numberBuckets = atoi(argv[4]);
+    numberBuckets = atoi(argv[3]);
     if(numberBuckets <= 0){
         err_dump("invalid number of buckets");
     }
@@ -121,13 +116,14 @@ int main(int argc, char* argv[]) {
         err_dump("server: can't open stream socket");
 
     /* Elimina o nome, para o caso de já existir.*/
-    unlink("tmp/");
+    unlink(nomesocket);
 
     /* O nome serve para que os clientes possam identificar o servidor */
     bzero((char *)&serv_addr, sizeof(serv_addr));
 
     serv_addr.sun_family = AF_UNIX;
-    strcpy(serv_addr.sun_path, );
+    strcpy(serv_addr.sun_path, nomesocket);
+
     servlen = strlen(serv_addr.sun_path) + sizeof(serv_addr.sun_family);
 
     if (bind(sockfd, (struct sockaddr *) &serv_addr, servlen) < 0)
