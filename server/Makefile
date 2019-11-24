@@ -8,6 +8,7 @@ LD   = gcc
 CFLAGS =-Wall -std=gnu99 -I../ -g
 LDFLAGS=-lm -pthread
 
+
 .PHONY: all clean
 
 all: tecnicofs
@@ -30,4 +31,4 @@ tecnicofs: lib/bst.o lib/hash.o lib/inodes.o fs.o sync.o main.o
 
 clean:
 	@echo Cleaning...
-	rm -f $(OBJS) $(TARGETS)
+	rm -f $(OBJS) tecnicofs
