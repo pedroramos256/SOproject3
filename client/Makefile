@@ -37,10 +37,6 @@ api-tests/client-api-test-create: tecnicofs-client-api.o api-tests/client-api-te
 
 #client-api-test-success: client-api-test-success.o tecnicofs-api-client.o
 
-
-
-	
-
 clean:
 	@echo Cleaning...
 	rm -f $(OBJS) $(TARGETS)

@@ -7,11 +7,13 @@ int main(int argc, char** argv) {
         exit(0);
     }
     assert(tfsMount(argv[1]) == 0);
-    printf("Test: create file sucess");
-    assert(tfsCreate("a", RW, READ) == 0);
-    printf("Test: create file with name that already exists");
-    assert(tfsCreate("a", RW, READ) == TECNICOFS_ERROR_FILE_ALREADY_EXISTS);
+    printf("Test: tfsMount sucess\n");
+    assert(tfsCreate("Somos bosses", RW, READ) == 0);
+    printf("Test: create file with name that already exists\n");
+    assert(tfsCreate("Again", RW, READ) == 0);
+    printf("Test: create sucess\n");
     assert(tfsUnmount() == 0);
+    printf("Test: tfsUnmount sucess\n");
 
     return 0;
 }

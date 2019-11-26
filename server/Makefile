@@ -13,8 +13,6 @@ LDFLAGS=-lm -pthread
 
 all: tecnicofs
 	
-
-
 lib/bst.o: lib/bst.c lib/bst.h
 lib/hash.o: lib/hash.c lib/hash.h
 lib/inodes.o: lib/inodes.c lib/inodes.h

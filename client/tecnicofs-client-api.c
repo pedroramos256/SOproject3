@@ -3,6 +3,8 @@
 
 #define MAXLINE 512
 
+int sockfd = -1, servlen;
+struct sockaddr_un serv_addr;
 
 void err_dump(char * str){
     printf("%s\n",str);
@@ -31,16 +33,13 @@ void str_cli(FILE *fp,int sockfd){
 }
 
 int tfsMount(char *adress){
-    int sockfd, servlen;
-    struct sockaddr_un serv_addr;
     char *total_path;
-
     total_path = (char*)malloc(sizeof(char)*(strlen(adress)+5));
     strcpy(total_path,"/tmp/");
     strcat(total_path,adress);
     /* Cria socket stream */
     if ((sockfd= socket(AF_UNIX, SOCK_STREAM, 0) ) < 0){
-        err_dump("client: can't open stream socket");
+        err_dump("tfsMount: can't open stream socket");
         return TECNICOFS_ERROR_CONNECTION_ERROR;
     }
     /* Primeiro uma limpeza preventiva */
@@ -53,9 +52,37 @@ int tfsMount(char *adress){
 
     /* Estabelece uma ligação. Só funciona se o socket tiver sido criado eo nome associado*/
     if(connect(sockfd, (struct sockaddr *) &serv_addr, servlen)<0){
-        err_dump("client: can't connect to server");
+        err_dump("tfsMount: can't connect to server");
         return TECNICOFS_ERROR_CONNECTION_ERROR;
     }
+    return 0;
+}
+
+int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions) {
+
+    int returnValue;
+    char *command;
+    int len = strlen(filename) + 6;
+    command = (char*) malloc(sizeof(char) * len);
+    sprintf(command, "c %s %d%d", filename, ownerPermissions, othersPermissions);
+    write(sockfd, command, len);
+
+    if(read(sockfd, &returnValue, sizeof(int)) < 0)
+        err_dump("tfsCreate: read error");
+
+    return returnValue;
+}
+
+int tfsUnmount() {
+
+    if(sockfd < 0) {
+        printf("%d\n", sockfd);
+        return TECNICOFS_ERROR_NO_OPEN_SESSION;
+    }
+
+    if(close(sockfd) != 0)
+        err_dump("tfsUnmount:failed to close socket");
+
     return 0;
 }
 

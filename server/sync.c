@@ -21,6 +21,22 @@ void init() {
 	int i;
 	for (i = 0; i < numberBuckets; i++)
 		INIT(i);
+	/* Cria socket stream */
+    if ((sockfd = socket(AF_UNIX,SOCK_STREAM,0) ) < 0)
+        err_dump("server: can't open stream socket");
+
+    /* Elimina o nome, para o caso de já existir.*/
+    unlink(total_path);
+
+    /* O nome serve para que os clientes possam identificar o servidor */
+    bzero((char *)&serv_addr, sizeof(serv_addr));
+
+    serv_addr.sun_family = AF_UNIX;
+    strcpy(serv_addr.sun_path, total_path);
+    servlen = strlen(serv_addr.sun_path) + sizeof(serv_addr.sun_family);
+
+    if (bind(sockfd, (struct sockaddr *) &serv_addr, servlen) < 0)
+        err_dump("server, can't bind local address");
 }
 
 void destroy() {
@@ -28,5 +44,4 @@ void destroy() {
 	int i;
     for (i = 0; i < numberBuckets; i++)
 		DESTROY(i);
-	free(lock);
 }
