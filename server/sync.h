@@ -3,6 +3,9 @@
 
 #include <unistd.h>
 #include <pthread.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include "../unix.h"
 
 /* Error messages */
 #define ERROR_LOCK "lock failure"
@@ -14,6 +17,9 @@ pthread_rwlock_t *lock;
 pthread_mutex_t inode_lock;
 
 int numberBuckets; 
+char *total_path;
+int sockfd, newsockfd, servlen;
+struct sockaddr_un cli_addr, serv_addr;
 
 void verify_func(int state,char * message);
 void init();
