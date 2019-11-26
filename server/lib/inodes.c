@@ -78,7 +78,7 @@ int inode_create(uid_t owner, permission ownerPerm, permission othersPerm){
     unlock_inode_table();
     return -1;
 }
-
+size_t
 /*
  * Deletes the i-node.
  * Input:

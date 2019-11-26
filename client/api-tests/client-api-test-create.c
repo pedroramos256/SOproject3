@@ -1,4 +1,4 @@
-#include "../client/tecnicofs-client-api.h"
+#include "../tecnicofs-client-api.h"
 #include <assert.h>
 
 int main(int argc, char** argv) {
