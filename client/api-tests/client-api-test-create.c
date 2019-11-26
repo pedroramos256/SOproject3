@@ -12,7 +12,6 @@ int main(int argc, char** argv) {
     printf("Test: create file with name that already exists\n");
     assert(tfsCreate("Again", RW, READ) == 0);
     printf("Test: create sucess\n");
-    sleep(2);
     assert(tfsUnmount() == 0);
     printf("Test: tfsUnmount sucess\n");
 

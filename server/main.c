@@ -63,17 +63,21 @@ void execution_time(struct timeval start, struct timeval end) {
 
 
 void * give_receive_order(void *sockfd){
-    int n, numTokens;
-    char token;
-    char line[MAXLINE];
-    char arg1[MAXLINE];
-    char arg2[MAXLINE];
+    int n;/*, numTokens;*/
+    /*char token;*/
+    char *buffer;
+    FILE *stream;
+    size_t max;
+    int zero = 0;
+    /*char arg1[MAXLINE];
+    char arg2[MAXLINE];*/
     int socket = (intptr_t) sockfd;
-    int iNumber;
+    /*int iNumber;*/
+    stream = fdopen(socket, "r");
     for (;;) {
+        n = getdelim(&buffer, &max, '\0', stream);
         /* Lê uma linha do socket */
-        n = read(socket, line, MAXLINE);
-        if (n == 0) {
+        if (n == -1) {
             printf("socket closed\n");
             close(socket);
             return NULL;
@@ -81,8 +85,9 @@ void * give_receive_order(void *sockfd){
         else if (n < 0)
             err_dump("give_receive_order: readline error");
         else {
-            printf("%s\n", line);
-            numTokens = sscanf(line, "%c %s %s", &token, arg1, arg2); 
+            printf("%s\n", buffer);
+            write(socket, &zero, sizeof(int));
+            /*numTokens = sscanf(line, "%c %s %s", &token, arg1, arg2); 
             switch(token) {
                 case 'c':
                     LOCK();
@@ -90,7 +95,7 @@ void * give_receive_order(void *sockfd){
                     UNLOCK();
                     create(fs, arg1, iNumber);
                     break;
-            }
+            }*/
         }
     }
 }

@@ -60,17 +60,17 @@ int tfsMount(char *adress){
 
 int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions) {
 
+    int returnValue;
     char *command;
-    char permissions[2];
     int len = strlen(filename) + 6;
     command = (char*) malloc(sizeof(char) * len);
-    strcpy(command, "c ");
-    strcat(command, filename);
-    strcat(command, " ");
-    sprintf(permissions, "%d", ownerPermissions * 10 + othersPermissions);
-    strcat(command, permissions);
+    sprintf(command, "c %s %d%d", filename, ownerPermissions, othersPermissions);
     write(sockfd, command, len);
-    return 0;
+
+    if(read(sockfd, &returnValue, sizeof(int)) < 0)
+        err_dump("tfsCreate: read error");
+
+    return returnValue;
 }
 
 int tfsUnmount() {
