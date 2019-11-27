@@ -55,7 +55,7 @@ void delete(tecnicofs* fs, char *name){
 }
 
 int lookup(tecnicofs* fs, char *name){
-	int index,inumber = 0;
+	int index,inumber = -1;
 	index = hash(name, numberBuckets);
 	printf("%d",index);
 	RDLOCK(index);

@@ -8,7 +8,6 @@ LD   = gcc
 CFLAGS =-Wall -std=gnu99 -I../ -g
 LDFLAGS=-lm -pthread
 
-
 .PHONY: all clean
 
 all: tecnicofs

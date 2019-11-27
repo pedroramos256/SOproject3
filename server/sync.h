@@ -7,6 +7,7 @@
 #include <sys/un.h>
 #include "../unix.h"
 #include "lib/inodes.h"
+#include "../client/tecnicofs-api-constants.h"
 
 /* Error messages */
 #define ERROR_LOCK "lock failure"

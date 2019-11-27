@@ -20,15 +20,11 @@
 
 tecnicofs* fs;                  
 
-
 FILE *output;
 
 /******************************************************************************
  *                         FUNCTIONS USED IN MAIN
  *****************************************************************************/
-
-
-
 
 static void displayUsage (const char* appName){
     printf("Usage: %s\n", appName);
@@ -56,10 +52,10 @@ void execution_time(struct timeval start, struct timeval end) {
 }
 
 void * give_receive_order(void *sockfd){
-    int n, iNumber, ownerPerm, othersPerm, returnValue = 0;
+    int n, iNumber, ownerPerm, otherPerm, returnValue;
     unsigned int len;
     char token;
-    char *buffer;
+    char *buffer = NULL;
     FILE *stream;
     size_t max;
     struct ucred ucred;
@@ -70,11 +66,11 @@ void * give_receive_order(void *sockfd){
     stream = fdopen(socket, "r");
     if(getsockopt(socket, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1)
         err_dump("give_receive_order: read UID error");
+    if((stream = fdopen(socket, "r")) == NULL)
+        err_dump("give_receive_order: fdopen failure");
     for (;;) {
-        printf("chegou aqui\n");
-        /*printf("--%s--\n",buffer);*/
-        printf("!!\n");
-        n = getdelim(&buffer, &max, 0, stream);
+        returnValue = 0;
+        n = getdelim(&buffer, &max, '\0', stream);
         /* Lê uma linha do socket */
         if (n == -1) {
             printf("socket closed\n");
@@ -84,39 +80,31 @@ void * give_receive_order(void *sockfd){
         else if (n < 0)
             err_dump("give_receive_order: readline error");
         else {
-            sscanf(buffer, "%c %s %s", &token, arg1, arg2);
+            
+            sscanf(buffer, "%c %s %s", &token, arg1, arg2); 
             switch(token) {
                 case 'c':
-                    if(lookup(fs,arg1) == 0) {
+                    if(lookup(fs, arg1) == -1) {
                         ownerPerm = atoi(arg2) / 10;
-                        othersPerm = atoi(arg2) % 10;
-                        iNumber = inode_create((long) ucred.uid, ownerPerm, othersPerm);
+                        otherPerm = atoi(arg2) % 10;
+                        iNumber = inode_create((long) ucred.uid, ownerPerm, otherPerm);
                         create(fs, arg1, iNumber);
-                    } 
-                    else {
-                        printf("entrou\n");
-                        returnValue = TECNICOFS_ERROR_FILE_ALREADY_EXISTS;
+                        break;
                     }
-
-                    break;
+                    else returnValue = TECNICOFS_ERROR_FILE_ALREADY_EXISTS;
                 case 'd':
-                    if(lookup(fs,arg1) == 0)
-                        returnValue = TECNICOFS_ERROR_FILE_NOT_FOUND;
-                    else{
-                        uid_t ownerUID;
-                        iNumber = lookup(fs,arg1);
-                        inode_get(iNumber,&ownerUID,NULL,NULL,NULL,0);
-                        if(ownerUID == ucred.uid)
-                            returnValue = TECNICOFS_ERROR_PERMISSION_DENIED;
-                        else{
-                            delete(fs,arg1);
+                    if((iNumber = lookup(fs, arg1)) != -1) {
+                        uid_t UID;
+                        inode_get(iNumber,&UID,NULL,NULL,NULL,len);
+                        if(UID == ucred.uid) {
+                            delete(fs, arg1);
                             inode_delete(iNumber);
                         }
+                        else returnValue = TECNICOFS_ERROR_PERMISSION_DENIED;
                     }
-                    break;
+                    else returnValue = TECNICOFS_ERROR_FILE_NOT_FOUND;
             }
             write(socket, &returnValue, sizeof(int));
-            returnValue = 0;
         }
     }
 }
@@ -147,7 +135,7 @@ int main(int argc, char* argv[]) {
     /*initializes the thread lockers and semaphores needed with validation */
     init();
     listen(sockfd, MAXCLIENTS);
-    printf("funciona\n");
+    
     for (;;) {
         clilen = sizeof(cli_addr);
         newsockfd =accept(sockfd,(struct sockaddr *) &cli_addr, &clilen);
@@ -155,7 +143,10 @@ int main(int argc, char* argv[]) {
             err_dump("server: accept error");
         if(pthread_create(&tid[num_clients], NULL, give_receive_order, (void *)(intptr_t)newsockfd) != 0)
             err_dump("server: thread creation error");
-        else num_clients++;
+        else {
+            num_clients++;
+        }
+
     }
     /*destroys the lockers*/
     destroy();

@@ -11,7 +11,6 @@ void err_dump(char * str){
     exit(EXIT_FAILURE);
 }
 
-
 int tfsMount(char *adress){
     char *total_path;
     total_path = (char*)malloc(sizeof(char)*(strlen(adress)+5));
@@ -38,21 +37,49 @@ int tfsMount(char *adress){
     return 0;
 }
 
+int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions) {
+
+    int returnValue;
+    char *command;
+    int len = strlen(filename) + 6;
+    command = (char*) malloc(sizeof(char) * len);
+    sprintf(command, "c %s %d%d", filename, ownerPermissions, othersPermissions);
+    write(sockfd, command, len);
+
+    if(read(sockfd, &returnValue, sizeof(int)) == TECNICOFS_ERROR_FILE_ALREADY_EXISTS)
+        err_dump("tfsCreate: file already exists");
+
+    return returnValue;
+}
+
+int tfsDelete(char *filename) {
+
+    int returnValue;
+    char * command;
+    int len = strlen(filename) + 3;
+    command = (char*) malloc(sizeof(char) * len);
+    sprintf(command, "d %s", filename);
+    write(sockfd, command, len);
+
+    if(read(sockfd, &returnValue, sizeof(int)) == TECNICOFS_ERROR_FILE_NOT_FOUND)
+        err_dump("tfsCreate: file already exists");
+
+    return returnValue;
+}
 
 int tfsUnmount() {
-
+    int n;
     if(sockfd < 0) {
-        printf("%d\n", sockfd);
         return TECNICOFS_ERROR_NO_OPEN_SESSION;
     }
 
-    if(close(sockfd) != 0)
+    if((n = close(sockfd)) != 0)
         err_dump("tfsUnmount:failed to close socket");
 
-    return 0;
+    return n;
 }
 
-
+/*
 int write_and_wait(char *command,int len){
     int returnValue;
     if(write(sockfd, command, len) != len)
@@ -64,14 +91,6 @@ int write_and_wait(char *command,int len){
     return returnValue;
 }
 
-int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions) {
-    char *command;
-    int len = strlen(filename) + 6;
-    command = (char*) malloc(sizeof(char) * len);
-    sprintf(command, "c %s %d%d", filename, ownerPermissions, othersPermissions);
-    
-    return write_and_wait(command,len);
-}
 
 
 int tfsDelete(char *filename){
@@ -82,5 +101,5 @@ int tfsDelete(char *filename){
 
     return write_and_wait(command,len);
 }
-
+*/
 

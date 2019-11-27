@@ -4,17 +4,17 @@
 #include <stdlib.h>
 
 
-void err_dump(char * str){
-    printf("%s\n",str);
-    exit(EXIT_FAILURE);
-}
-
 /* does an error verification for the pthread functions */
 void verify_func(int state,char * message) {
     if (state != 0) {
         printf("%s\n",message);  
         exit(EXIT_FAILURE);
     }
+}
+
+void err_dump(char * str){
+    printf("%s\n",str);
+    exit(EXIT_FAILURE);
 }
 
 void init() {
@@ -25,9 +25,7 @@ void init() {
 		perror("failed to allocate vector of lockers");
 		exit(EXIT_FAILURE);
     }
-    printf("antes\n");
     inode_table_init();
-    printf("depois\n");
 	for (i = 0; i < numberBuckets; i++)
 		INIT(i);
 	/* Cria socket stream */
@@ -53,6 +51,5 @@ void destroy() {
 	int i;
     for (i = 0; i < numberBuckets; i++)
 		DESTROY(i);
-
-    inode_table_destroy();
+	inode_table_destroy();
 }
