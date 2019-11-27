@@ -11,6 +11,11 @@ void verify_func(int state,char * message) {
     }
 }
 
+void err_dump(char * str){
+    printf("%s\n",str);
+    exit(EXIT_FAILURE);
+}
+
 void init() {
     /* initializes lockers for de vector of bst's */
 	lock = (pthread_rwlock_t*)malloc(numberBuckets*sizeof(pthread_rwlock_t));
@@ -18,6 +23,7 @@ void init() {
 		perror("failed to allocate vector of lockers");
 		exit(EXIT_FAILURE);
     }
+    inode_table_init();
 	int i;
 	for (i = 0; i < numberBuckets; i++)
 		INIT(i);
@@ -44,4 +50,5 @@ void destroy() {
 	int i;
     for (i = 0; i < numberBuckets; i++)
 		DESTROY(i);
+	inode_table_destroy();
 }

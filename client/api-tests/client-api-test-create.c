@@ -10,10 +10,9 @@ int main(int argc, char** argv) {
     printf("Test: tfsMount sucess\n");
     assert(tfsCreate("Somos bosses", RW, READ) == 0);
     printf("Test: create file with name that already exists\n");
-    assert(tfsCreate("Again", RW, READ) == 0);
-    printf("Test: create sucess\n");
-    assert(tfsUnmount() == 0);
+    assert(tfsCreate("Somos bosses", RW, READ) == TECNICOFS_ERROR_FILE_ALREADY_EXISTS);
     printf("Test: tfsUnmount sucess\n");
+    assert(tfsUnmount() == 0);
 
     return 0;
 }

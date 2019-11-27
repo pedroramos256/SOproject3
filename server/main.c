@@ -19,18 +19,11 @@
 
 tecnicofs* fs;                  
 
-
 FILE *output;
 
 /******************************************************************************
  *                         FUNCTIONS USED IN MAIN
  *****************************************************************************/
-
-
-void err_dump(char * str){
-    printf("%s\n",str);
-    exit(EXIT_FAILURE);
-}
 
 static void displayUsage (const char* appName){
     printf("Usage: %s\n", appName);
@@ -58,7 +51,7 @@ void execution_time(struct timeval start, struct timeval end) {
 }
 
 void * give_receive_order(void *sockfd){
-    int n, iNumber, ownerPerm, otherPerm, zero = 0;
+    int n, iNumber, ownerPerm, otherPerm, returnValue;
     unsigned int len;
     char token;
     char *buffer;
@@ -71,8 +64,10 @@ void * give_receive_order(void *sockfd){
     len = sizeof(struct ucred);
     if(getsockopt(socket, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1)
         err_dump("give_receive_order: read UID error");
-    stream = fdopen(socket, "r");
+    if((stream = fdopen(socket, "r")) == NULL)
+        err_dump("give_receive_order: fdopen failure");
     for (;;) {
+        returnValue = 0;
         n = getdelim(&buffer, &max, '\0', stream);
         /* Lê uma linha do socket */
         if (n == -1) {
@@ -84,17 +79,31 @@ void * give_receive_order(void *sockfd){
             err_dump("give_receive_order: readline error");
         else {
             printf("%s\n", buffer);
-            write(socket, &zero, sizeof(int));
             sscanf(buffer, "%c %s %s", &token, arg1, arg2); 
-            ownerPerm = atoi(arg2) / 10;
-            otherPerm = atoi(arg2) % 10;
             switch(token) {
                 case 'c':
-                    iNumber = inode_create((long) ucred.uid, ownerPerm, otherPerm);
-                    create(fs, arg1, iNumber);
-                    break;
+                    if(lookup(fs, arg1) == -1) {
+                        ownerPerm = atoi(arg2) / 10;
+                        otherPerm = atoi(arg2) % 10;
+                        iNumber = inode_create((long) ucred.uid, ownerPerm, otherPerm);
+                        create(fs, arg1, iNumber);
+                        break;
+                    }
+                    else returnValue = TECNICOFS_ERROR_FILE_ALREADY_EXISTS;
+                case 'd':
+                    if((iNumber = lookup(fs, arg1)) != -1) {
+                        uid_t UID;
+                        inode_get(iNumber,&UID,NULL,NULL,NULL,len);
+                        if(UID == ucred.uid) {
+                            delete(fs, arg1);
+                            inode_delete(iNumber);
+                        }
+                        else returnValue = TECNICOFS_ERROR_PERMISSION_DENIED;
+                    }
+                    else returnValue = TECNICOFS_ERROR_FILE_NOT_FOUND;
             }
         }
+        write(socket, &returnValue, sizeof(int));
     }
 }
 
@@ -122,7 +131,8 @@ int main(int argc, char* argv[]) {
     }
     fs = new_tecnicofs();
     /*initializes the thread lockers and semaphores needed with validation */
-    systemInit();
+    init();
+
     listen(sockfd, MAXCLIENTS);
     for (;;) {
         clilen = sizeof(cli_addr);
@@ -133,7 +143,6 @@ int main(int argc, char* argv[]) {
             err_dump("server: thread creation error");
         else {
             num_clients++;
-            printf("%d\n", num_clients);
         }
 
     }

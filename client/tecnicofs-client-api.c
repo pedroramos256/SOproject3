@@ -11,27 +11,6 @@ void err_dump(char * str){
     exit(EXIT_FAILURE);
 }
 
-/*Lê string de fp e envia para sockfd. Lê string de sockfd e envia para stdout*/
-void str_cli(FILE *fp,int sockfd){
-    int n;
-    char sendline[MAXLINE], recvline[MAXLINE+1];
-    while(fgets(sendline, MAXLINE, fp) != NULL){
-        /* Envia string para sockfd.Note-se que o \0 não é enviado */
-        n = strlen(sendline);
-        if (write(sockfd, sendline, n) != n)
-            err_dump("str_cli:write error on socket");
-
-        /* Tenta ler string de sockfd.Note-se que tem de terminar a string com \0 */
-        n = read(sockfd, recvline, MAXLINE);
-        if (n<0) err_dump("str_cli:readline error");
-        recvline[n] = 0;
-        /* Envia a string para stdout */
-        fputs(recvline, stdout);
-    }
-    if (ferror(fp))
-        err_dump("str_cli: error reading file");
-}
-
 int tfsMount(char *adress){
     char *total_path;
     total_path = (char*)malloc(sizeof(char)*(strlen(adress)+5));
@@ -67,23 +46,37 @@ int tfsCreate(char *filename, permission ownerPermissions, permission othersPerm
     sprintf(command, "c %s %d%d", filename, ownerPermissions, othersPermissions);
     write(sockfd, command, len);
 
-    if(read(sockfd, &returnValue, sizeof(int)) < 0)
-        err_dump("tfsCreate: read error");
+    if(read(sockfd, &returnValue, sizeof(int)) == TECNICOFS_ERROR_FILE_ALREADY_EXISTS)
+        err_dump("tfsCreate: file already exists");
+
+    return returnValue;
+}
+
+int tfsDelete(char *filename) {
+
+    int returnValue;
+    char * command;
+    int len = strlen(filename) + 3;
+    command = (char*) malloc(sizeof(char) * len);
+    sprintf(command, "d %s", filename);
+    write(sockfd, command, len);
+
+    if(read(sockfd, &returnValue, sizeof(int)) == TECNICOFS_ERROR_FILE_NOT_FOUND)
+        err_dump("tfsCreate: file already exists");
 
     return returnValue;
 }
 
 int tfsUnmount() {
-
+    int n;
     if(sockfd < 0) {
-        printf("%d\n", sockfd);
         return TECNICOFS_ERROR_NO_OPEN_SESSION;
     }
 
-    if(close(sockfd) != 0)
+    if((n = close(sockfd)) != 0)
         err_dump("tfsUnmount:failed to close socket");
 
-    return 0;
+    return n;
 }
 
 

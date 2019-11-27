@@ -6,6 +6,8 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include "../unix.h"
+#include "lib/inodes.h"
+#include "../client/tecnicofs-api-constants.h"
 
 /* Error messages */
 #define ERROR_LOCK "lock failure"
@@ -22,6 +24,7 @@ int sockfd, newsockfd, servlen;
 struct sockaddr_un cli_addr, serv_addr;
 
 void verify_func(int state,char * message);
+void err_dump(char * str);
 void init();
 void destroy();
 
