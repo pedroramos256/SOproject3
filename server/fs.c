@@ -9,6 +9,10 @@
 #define max(a,b) ((a) > (b)) ? (a) : (b)
 
 
+int obtainNewInumber(tecnicofs* fs) {
+	int newInumber = ++(fs->nextINumber);
+	return newInumber;
+}
 
 tecnicofs* new_tecnicofs(){
 	int i;
@@ -57,7 +61,6 @@ void delete(tecnicofs* fs, char *name){
 int lookup(tecnicofs* fs, char *name){
 	int index,inumber = -1;
 	index = hash(name, numberBuckets);
-	printf("%d",index);
 	RDLOCK(index);
 	node *searchNode = search(fs->bstRoot[index], name);
 	if ( searchNode ) inumber = searchNode->inumber;

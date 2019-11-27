@@ -23,8 +23,8 @@ char *total_path;
 int sockfd, newsockfd, servlen;
 struct sockaddr_un cli_addr, serv_addr;
 
-void err_dump(char *str);
 void verify_func(int state,char * message);
+void err_dump(char * str);
 void init();
 void destroy();
 
