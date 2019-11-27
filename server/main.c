@@ -13,6 +13,7 @@
 
 #include "fs.h"
 #include "sync.h"
+#include "../client/tecnicofs-api-constants.h"
 
 #define MAXLINE     512
 #define MAXCLIENTS  10
@@ -27,10 +28,7 @@ FILE *output;
  *****************************************************************************/
 
 
-void err_dump(char * str){
-    printf("%s\n",str);
-    exit(EXIT_FAILURE);
-}
+
 
 static void displayUsage (const char* appName){
     printf("Usage: %s\n", appName);
@@ -58,7 +56,7 @@ void execution_time(struct timeval start, struct timeval end) {
 }
 
 void * give_receive_order(void *sockfd){
-    int n, iNumber, ownerPerm, otherPerm, zero = 0;
+    int n, iNumber, ownerPerm, othersPerm, returnValue = 0;
     unsigned int len;
     char token;
     char *buffer;
@@ -69,11 +67,14 @@ void * give_receive_order(void *sockfd){
     char arg2[MAXLINE];
     int socket = (intptr_t) sockfd;
     len = sizeof(struct ucred);
+    stream = fdopen(socket, "r");
     if(getsockopt(socket, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1)
         err_dump("give_receive_order: read UID error");
-    stream = fdopen(socket, "r");
     for (;;) {
-        n = getdelim(&buffer, &max, '\0', stream);
+        printf("chegou aqui\n");
+        /*printf("--%s--\n",buffer);*/
+        printf("!!\n");
+        n = getdelim(&buffer, &max, 0, stream);
         /* Lê uma linha do socket */
         if (n == -1) {
             printf("socket closed\n");
@@ -83,17 +84,39 @@ void * give_receive_order(void *sockfd){
         else if (n < 0)
             err_dump("give_receive_order: readline error");
         else {
-            printf("%s\n", buffer);
-            write(socket, &zero, sizeof(int));
-            sscanf(buffer, "%c %s %s", &token, arg1, arg2); 
-            ownerPerm = atoi(arg2) / 10;
-            otherPerm = atoi(arg2) % 10;
+            sscanf(buffer, "%c %s %s", &token, arg1, arg2);
             switch(token) {
                 case 'c':
-                    iNumber = inode_create((long) ucred.uid, ownerPerm, otherPerm);
-                    create(fs, arg1, iNumber);
+                    if(lookup(fs,arg1) == 0) {
+                        ownerPerm = atoi(arg2) / 10;
+                        othersPerm = atoi(arg2) % 10;
+                        iNumber = inode_create((long) ucred.uid, ownerPerm, othersPerm);
+                        create(fs, arg1, iNumber);
+                    } 
+                    else {
+                        printf("entrou\n");
+                        returnValue = TECNICOFS_ERROR_FILE_ALREADY_EXISTS;
+                    }
+
+                    break;
+                case 'd':
+                    if(lookup(fs,arg1) == 0)
+                        returnValue = TECNICOFS_ERROR_FILE_NOT_FOUND;
+                    else{
+                        uid_t ownerUID;
+                        iNumber = lookup(fs,arg1);
+                        inode_get(iNumber,&ownerUID,NULL,NULL,NULL,0);
+                        if(ownerUID == ucred.uid)
+                            returnValue = TECNICOFS_ERROR_PERMISSION_DENIED;
+                        else{
+                            delete(fs,arg1);
+                            inode_delete(iNumber);
+                        }
+                    }
                     break;
             }
+            write(socket, &returnValue, sizeof(int));
+            returnValue = 0;
         }
     }
 }
@@ -122,8 +145,9 @@ int main(int argc, char* argv[]) {
     }
     fs = new_tecnicofs();
     /*initializes the thread lockers and semaphores needed with validation */
-    systemInit();
+    init();
     listen(sockfd, MAXCLIENTS);
+    printf("funciona\n");
     for (;;) {
         clilen = sizeof(cli_addr);
         newsockfd =accept(sockfd,(struct sockaddr *) &cli_addr, &clilen);
@@ -131,11 +155,7 @@ int main(int argc, char* argv[]) {
             err_dump("server: accept error");
         if(pthread_create(&tid[num_clients], NULL, give_receive_order, (void *)(intptr_t)newsockfd) != 0)
             err_dump("server: thread creation error");
-        else {
-            num_clients++;
-            printf("%d\n", num_clients);
-        }
-
+        else num_clients++;
     }
     /*destroys the lockers*/
     destroy();

@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include "../unix.h"
+#include "lib/inodes.h"
 
 /* Error messages */
 #define ERROR_LOCK "lock failure"
@@ -21,6 +22,7 @@ char *total_path;
 int sockfd, newsockfd, servlen;
 struct sockaddr_un cli_addr, serv_addr;
 
+void err_dump(char *str);
 void verify_func(int state,char * message);
 void init();
 void destroy();
