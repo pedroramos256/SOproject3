@@ -62,9 +62,33 @@ int tfsDelete(char *filename) {
     write(sockfd, command, len);
 
     if(read(sockfd, &returnValue, sizeof(int)) == TECNICOFS_ERROR_FILE_NOT_FOUND)
-        err_dump("tfsCreate: file already exists");
+        err_dump("tfsDelete: file already exists");
+
+    /*else if(read(sockfd, &returnValue, sizeof(int)) == TECNICOFS_ERROR_PERMISSION_DENIED)
+        err_dump("tfsDelete: permission denied");*/
 
     return returnValue;
+}
+
+int tfsRename(char *filenameOld, char *filenameNew) {
+
+    int returnValue;
+    char * command;
+    int len = strlen(filenameOld) + strlen(filenameNew) + 4;
+    command = (char*) malloc(sizeof(char) * len);
+    sprintf(command, "r %s %s", filenameOld, filenameNew);
+    write(sockfd, command, len);
+
+    if(read(sockfd, &returnValue, sizeof(int)) == TECNICOFS_ERROR_FILE_NOT_FOUND)
+        err_dump("tfsRename: filenameOld does not exist");
+
+    /*else if(read(sockfd, &returnValue, sizeof(int)) == TECNICOFS_ERROR_FILE_ALREADY_EXISTS)
+        err_dump("tfsRename: filenameNew already exists");
+
+    else if(read(sockfd, &returnValue, sizeof(int)) == TECNICOFS_ERROR_PERMISSION_DENIED)
+        err_dump("tfsRename: permission denied");*/
+
+    return returnValue; 
 }
 
 int tfsUnmount() {

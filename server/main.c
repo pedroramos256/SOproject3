@@ -51,7 +51,7 @@ void execution_time(struct timeval start, struct timeval end) {
 }
 
 void * give_receive_order(void *sockfd){
-    int n, iNumber, ownerPerm, otherPerm, returnValue;
+    int n, iNumber, ownerPerm, otherPerm, returnValue, searchResult1, searchResult2;
     unsigned int len;
     char token;
     char *buffer;
@@ -60,6 +60,7 @@ void * give_receive_order(void *sockfd){
     struct ucred ucred;
     char arg1[MAXLINE];
     char arg2[MAXLINE];
+    uid_t UID;
     int socket = (intptr_t) sockfd;
     len = sizeof(struct ucred);
     if(getsockopt(socket, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1)
@@ -79,7 +80,7 @@ void * give_receive_order(void *sockfd){
             err_dump("give_receive_order: readline error");
         else {
             printf("%s\n", buffer);
-            sscanf(buffer, "%c %s %s", &token, arg1, arg2); 
+            sscanf(buffer, "%c %s %s", &token, arg1, arg2);
             switch(token) {
                 case 'c':
                     if(lookup(fs, arg1) == -1) {
@@ -92,7 +93,6 @@ void * give_receive_order(void *sockfd){
                     else returnValue = TECNICOFS_ERROR_FILE_ALREADY_EXISTS;
                 case 'd':
                     if((iNumber = lookup(fs, arg1)) != -1) {
-                        uid_t UID;
                         inode_get(iNumber,&UID,NULL,NULL,NULL,len);
                         if(UID == ucred.uid) {
                             delete(fs, arg1);
@@ -101,6 +101,25 @@ void * give_receive_order(void *sockfd){
                         else returnValue = TECNICOFS_ERROR_PERMISSION_DENIED;
                     }
                     else returnValue = TECNICOFS_ERROR_FILE_NOT_FOUND;
+                case 'r':
+                    searchResult1 = lookup(fs,arg1);
+                    printf("%d\n", searchResult1);
+                    searchResult2 = lookup(fs, arg2);
+                    printf("%d\n", searchResult2);
+                    if(searchResult1 != -1) {
+                        if (searchResult2 == -1) {
+                            inode_get(iNumber,&UID,NULL,NULL,NULL,len);
+                            if (UID == ucred.uid) {
+                                exchange(fs, arg1, arg2, searchResult1);
+                            }
+                            else
+                                returnValue = TECNICOFS_ERROR_PERMISSION_DENIED;
+                        }
+                        else
+                            returnValue = TECNICOFS_ERROR_FILE_ALREADY_EXISTS;  
+                    }
+                    else
+                        returnValue = TECNICOFS_ERROR_FILE_NOT_FOUND;
             }
         }
         write(socket, &returnValue, sizeof(int));
