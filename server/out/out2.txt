@@ -1,0 +1,11 @@
+
+tree 0:
+
+    LOL
+  abc
+    bcd
+      cde
+          def
+        efg
+          fgh
+            ghi
