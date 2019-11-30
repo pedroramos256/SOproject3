@@ -85,7 +85,7 @@ int insertFile(openedFile openedFiles[],openedFile of){
             return i;
         }
     }
-    return -1;//never appens
+    return -1;//never happens
 }
 
 openedFile getFile(openedFile openedFiles[],int iNumber){
@@ -179,8 +179,7 @@ void *give_receive_order(void *sockfd){
                                     file = (openedFile)malloc(sizeof(struct openedFile));
                                     file->inumber = iNumber;
                                     file->p = atoi(arg2);
-                                    insertFile(openedFiles,file);
-                                    returnValue = iNumber;
+                                    returnValue = insertFile(openedFiles,file);
                                 } else
                                     returnValue = TECNICOFS_ERROR_PERMISSION_DENIED;
                             } else
@@ -217,6 +216,7 @@ void *give_receive_order(void *sockfd){
                     
                     write(socket,fileToSend,len);
                     read(socket,buffer,0);
+                    printf("%d\n",returnValue);
                     break;
                 case 'w':
                     fd = atoi(arg1);
