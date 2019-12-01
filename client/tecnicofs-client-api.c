@@ -3,8 +3,7 @@
 
 #define MAXLINE 512
 
-int sockfd = -1, servlen;
-struct sockaddr_un serv_addr;
+int sockfd = -1;
 
 void err_dump(char * str){
     printf("%s\n",str);
@@ -12,11 +11,17 @@ void err_dump(char * str){
 }
 
 int tfsMount(char *adress){
+    struct sockaddr_un serv_addr;
+    int servlen;
     char *total_path;
     total_path = (char*)malloc(sizeof(char)*(strlen(adress)+5));
     strcpy(total_path,"/tmp/");
     strcat(total_path,adress);
     /* Cria socket stream */
+
+    if(sockfd > 0)
+        return TECNICOFS_ERROR_OPEN_SESSION;
+        
     if ((sockfd= socket(AF_UNIX, SOCK_STREAM, 0) ) < 0){
         err_dump("tfsMount: can't open stream socket");
         return TECNICOFS_ERROR_CONNECTION_ERROR;
@@ -29,7 +34,7 @@ int tfsMount(char *adress){
     servlen = strlen(serv_addr.sun_path) + sizeof(serv_addr.sun_family);
 
 
-    /* Estabelece uma ligação. Só funciona se o socket tiver sido criado eo nome associado*/
+    /* Estabelece uma ligação. Só funciona se o socket tiver sido criado e o nome associado*/
     if(connect(sockfd, (struct sockaddr *) &serv_addr, servlen)<0){
         err_dump("tfsMount: can't connect to server");
         return TECNICOFS_ERROR_CONNECTION_ERROR;
@@ -37,84 +42,101 @@ int tfsMount(char *adress){
     return 0;
 }
 
-int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions) {
 
+int tfsComunicate(char *command,int len){
     int returnValue;
-    char *command;
-    int len = strlen(filename) + 6;
-    command = (char*) malloc(sizeof(char) * len);
-    sprintf(command, "c %s %d%d", filename, ownerPermissions, othersPermissions);
+
     write(sockfd, command, len);
 
-    if(read(sockfd, &returnValue, sizeof(int)) == TECNICOFS_ERROR_FILE_ALREADY_EXISTS)
-        err_dump("tfsCreate: file already exists");
-
+    read(sockfd, &returnValue, sizeof(int));
     return returnValue;
+}
+
+
+int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions) {
+    int len = strlen(filename) + 6;
+    char *command = (char*) malloc(sizeof(char) * len);
+    sprintf(command, "c %s %d%d", filename, ownerPermissions, othersPermissions);
+  
+    return tfsComunicate(command,len);
 }
 
 int tfsDelete(char *filename) {
-
-    int returnValue;
-    char * command;
     int len = strlen(filename) + 3;
-    command = (char*) malloc(sizeof(char) * len);
+    char *command = (char*) malloc(sizeof(char) * len);
     sprintf(command, "d %s", filename);
 
-    write(sockfd, command, len);
-
-    read(sockfd, &returnValue, sizeof(int));
-
-    return returnValue;
+    return tfsComunicate(command,len);
 }
 
 int tfsRename(char *filenameOld, char *filenameNew) {
-
-    int returnValue;
-    char * command;
     int len = strlen(filenameOld) + strlen(filenameNew) + 4;
-    command = (char*) malloc(sizeof(char) * len);
+    char *command = (char*) malloc(sizeof(char) * len);
     sprintf(command, "r %s %s", filenameOld, filenameNew);
 
-    write(sockfd, command, len);
-
-    read(sockfd, &returnValue, sizeof(int));
-
-    return returnValue; 
+    return tfsComunicate(command,len);
 }
 
 int tfsOpen(char *filename,permission mode){
-    int returnValue,n;
-    char *command;
-    char *buffer = NULL;
-    FILE *stream;
-    size_t max;
-
     int len = strlen(filename) + 5;
-    command = (char*) malloc(sizeof(char) * len);
+    char *command = (char*) malloc(sizeof(char) * len);
     sprintf(command, "o %s %d", filename, mode);
-    write(sockfd, command, len);
+  
+    return tfsComunicate(command,len);
+}
 
-    if((stream = fdopen(sockfd, "r")) == NULL)
-        err_dump("give_receive_order: fdopen failure");
-    n = getdelim(&buffer, &max, '\0', stream);
-    /* Lê uma linha do socket */
-    if (n < 0)
-        err_dump("give_receive_order: readline error");
+int tfsClose(int fd){
+    char fdinString[12];//max size of an int in characters
+    sprintf(fdinString,"%d",fd);
+    int len = strlen(fdinString) + 3;
+    char *command = (char*) malloc(sizeof(char) * len);
     
-    read(sockfd, &returnValue, sizeof(int));
+    sprintf(command, "x %d", fd);
+   
+    return tfsComunicate(command,len);
+}
 
-    return returnValue; 
+int tfsRead(int fd, char *buffer, int len){
+    char string[12*2+1];//max size of two int's in characters
+    sprintf(string,"%d %d",fd,len);
+    int commandlen = strlen(string) + 3;
+    char *command = (char*) malloc(sizeof(char) * commandlen);
+    sprintf(command, "l %d %d", fd, len);
+
+    write(sockfd, command, commandlen);
+    read(sockfd,buffer,len);
+    
+    return tfsComunicate('\0',0);
+}
+
+
+int tfsWrite(int fd,char *buffer,int len){
+    char fdinString[12];//max size of an int in characters
+    sprintf(fdinString,"%d",fd);
+    int commandlen = strlen(fdinString) + 4;
+
+    if(strlen(buffer) > len) {
+        commandlen += len;
+    } else
+        commandlen += strlen(buffer);
+
+    char *command = (char*) malloc(sizeof(char) * commandlen);
+    
+    sprintf(command, "w %d ", fd);
+    strncat(command,buffer,len);
+
+    return tfsComunicate(command,commandlen);
 }
 
 int tfsUnmount() {
     int n;
-    if(sockfd < 0) {
+    if(sockfd < 0) 
         return TECNICOFS_ERROR_NO_OPEN_SESSION;
-    }
 
     if((n = close(sockfd)) != 0)
-        err_dump("tfsUnmount:failed to close socket");
+        return TECNICOFS_ERROR_OTHER;
 
+    sockfd = -1;
     return n;
 }
 

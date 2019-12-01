@@ -90,6 +90,7 @@ int inode_create(uid_t owner, permission ownerPerm, permission othersPerm){
 int inode_delete(int inumber){
     lock_inode_table();
     if((inumber < 0) || (inumber > INODE_TABLE_SIZE) || (inode_table[inumber].owner == FREE_INODE)){
+        printf("%d %d %d\n",(inumber < 0) , (inumber > INODE_TABLE_SIZE) , (inode_table[inumber].owner == FREE_INODE));
         printf("inode_delete: invalid inumber");
         unlock_inode_table();
         return -1;
@@ -120,6 +121,7 @@ int inode_get(int inumber,uid_t *owner, permission *ownerPerm, permission *other
                      char* fileContents, int len){
     lock_inode_table();
     if((inumber < 0) || (inumber > INODE_TABLE_SIZE) || (inode_table[inumber].owner == FREE_INODE)){
+        printf("%d %d %d\n",(inumber < 0) , (inumber > INODE_TABLE_SIZE) , (inode_table[inumber].owner == FREE_INODE));
         printf("inode_getValues: invalid inumber %d\n", inumber);
         unlock_inode_table();
         return -1;

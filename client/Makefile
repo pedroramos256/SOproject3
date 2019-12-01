@@ -3,6 +3,7 @@
 SOURCES = tecnicofs-client-api.c 
 SOURCES += api-tests/client-api-test-create.c api-tests/client-api-test-delete.c
 SOURCES += api-tests/client-api-test-read.c api-tests/client-api-test-success.c
+SOURCES += api-tests/test343.c
 OBJS = $(SOURCES:%.c=%.o)
 CC   = gcc
 LD   = gcc
@@ -10,6 +11,7 @@ CFLAGS =-Wall -std=gnu99 -I../ -g
 LDFLAGS = -lm -pthread
 TARGETS = api-tests/client-api-test-create api-tests/client-api-test-delete
 TARGETS += api-tests/client-api-test-read api-tests/client-api-test-success
+TARGETS += api-tests/test343
 
 .PHONY: all clean
 
@@ -28,6 +30,8 @@ api-tests/client-api-test-create: tecnicofs-client-api.o api-tests/client-api-te
 api-tests/client-api-test-delete.o: api-tests/client-api-test-delete.c tecnicofs-client-api.h tecnicofs-api-constants.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+api-tests/client-api-test-delete: tecnicofs-client-api.o api-tests/client-api-test-delete.o
+	$(LD) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 api-tests/client-api-test-read.o: api-tests/client-api-test-read.c tecnicofs-client-api.h tecnicofs-api-constants.h
 	$(CC) $(CFLAGS) -c -o $@ $<
@@ -39,6 +43,12 @@ api-tests/client-api-test-success.o: api-tests/client-api-test-success.c tecnico
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 api-tests/client-api-test-success: tecnicofs-client-api.o api-tests/client-api-test-success.o
+	$(LD) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+api-tests/test343.o: api-tests/test343.c tecnicofs-client-api.h tecnicofs-api-constants.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+api-tests/test343: tecnicofs-client-api.o api-tests/test343.o
 	$(LD) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 clean:

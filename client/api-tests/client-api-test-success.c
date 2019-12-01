@@ -1,8 +1,8 @@
 #include "../tecnicofs-client-api.h"
+#include "../tecnicofs-api-constants.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-
 
 int main(int argc, char** argv) {
     if (argc != 2) {
@@ -10,14 +10,15 @@ int main(int argc, char** argv) {
         exit(0);
     }
     
-    /*char readBuffer[4] = {0};*/
-    printf("Test: tfsMount sucess\n");
+    char readBuffer[4] = {0};
+
     assert(tfsMount(argv[1]) == 0);
-    printf("Test: tfsCreate sucess\n");
-    assert(tfsCreate("abc", RW, READ) == 0);
-    printf("Test: tfsRename sucess\n");
+
+    assert(tfsCreate("abc", RW, READ) == 0 );
+
     assert(tfsRename("abc", "bcd") == 0);
-    /*int fd = -1;
+
+    int fd = -1;
     assert((fd = tfsOpen("bcd", RW)) == 0);
 
     assert(tfsWrite(fd, "hmm", 3) == 0);
@@ -26,10 +27,10 @@ int main(int argc, char** argv) {
 
     puts(readBuffer);
 
-    assert(tfsClose(fd) == 0);*/
-    printf("Test: tfsDelete sucess\n");
+    assert(tfsClose(fd) == 0);
+
     assert(tfsDelete("bcd") == 0);
-    printf("Test: tfsUnmount sucess\n");
+
     assert(tfsUnmount() == 0);
 
     return 0;

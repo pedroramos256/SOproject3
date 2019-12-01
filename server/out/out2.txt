@@ -7,5 +7,5 @@ tree 0:
       cde
           def
         efg
-          ghi
-            xyz
+          fgh
+            ghi
