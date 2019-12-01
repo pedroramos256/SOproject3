@@ -2,7 +2,6 @@
 #define TECNICOFS_CLIENT_API_H
 
 #include "tecnicofs-api-constants.h"
-#include <sys/socket.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>

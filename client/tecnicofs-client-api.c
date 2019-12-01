@@ -3,7 +3,7 @@
 
 #define MAXLINE 512
 
-int sockfd = -1;
+int sockfd = -1;//initialization to identify that sockfd is not Mounted
 
 void err_dump(char * str){
     printf("%s\n",str);

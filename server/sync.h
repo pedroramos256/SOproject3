@@ -3,8 +3,6 @@
 
 #include <unistd.h>
 #include <pthread.h>
-#include <sys/socket.h>
-#include <sys/un.h>
 #include "../unix.h"
 #include "lib/inodes.h"
 #include "../client/tecnicofs-api-constants.h"

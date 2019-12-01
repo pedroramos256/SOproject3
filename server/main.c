@@ -336,9 +336,7 @@ int main(int argc, char* argv[]) {
             num_clients++;
         }
     }
-    printf("YEEES\n");
     for (int i = 0; i < num_clients; i++) {
-        printf("%d\n", i);
         pthread_join(tid[i], NULL);
     }
     gettimeofday(&end, NULL);
