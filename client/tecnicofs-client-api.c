@@ -59,13 +59,10 @@ int tfsDelete(char *filename) {
     int len = strlen(filename) + 3;
     command = (char*) malloc(sizeof(char) * len);
     sprintf(command, "d %s", filename);
+
     write(sockfd, command, len);
 
-    if(read(sockfd, &returnValue, sizeof(int)) == TECNICOFS_ERROR_FILE_NOT_FOUND)
-        err_dump("tfsDelete: file already exists");
-
-    /*else if(read(sockfd, &returnValue, sizeof(int)) == TECNICOFS_ERROR_PERMISSION_DENIED)
-        err_dump("tfsDelete: permission denied");*/
+    read(sockfd, &returnValue, sizeof(int));
 
     return returnValue;
 }
@@ -77,16 +74,34 @@ int tfsRename(char *filenameOld, char *filenameNew) {
     int len = strlen(filenameOld) + strlen(filenameNew) + 4;
     command = (char*) malloc(sizeof(char) * len);
     sprintf(command, "r %s %s", filenameOld, filenameNew);
+
     write(sockfd, command, len);
 
-    if(read(sockfd, &returnValue, sizeof(int)) == TECNICOFS_ERROR_FILE_NOT_FOUND)
-        err_dump("tfsRename: filenameOld does not exist");
+    read(sockfd, &returnValue, sizeof(int));
 
-    /*else if(read(sockfd, &returnValue, sizeof(int)) == TECNICOFS_ERROR_FILE_ALREADY_EXISTS)
-        err_dump("tfsRename: filenameNew already exists");
+    return returnValue; 
+}
 
-    else if(read(sockfd, &returnValue, sizeof(int)) == TECNICOFS_ERROR_PERMISSION_DENIED)
-        err_dump("tfsRename: permission denied");*/
+int tfsOpen(char *filename,permission mode){
+    int returnValue,n;
+    char *command;
+    char *buffer = NULL;
+    FILE *stream;
+    size_t max;
+
+    int len = strlen(filename) + 5;
+    command = (char*) malloc(sizeof(char) * len);
+    sprintf(command, "o %s %d", filename, mode);
+    write(sockfd, command, len);
+
+    if((stream = fdopen(sockfd, "r")) == NULL)
+        err_dump("give_receive_order: fdopen failure");
+    n = getdelim(&buffer, &max, '\0', stream);
+    /* Lê uma linha do socket */
+    if (n < 0)
+        err_dump("give_receive_order: readline error");
+    
+    read(sockfd, &returnValue, sizeof(int));
 
     return returnValue; 
 }

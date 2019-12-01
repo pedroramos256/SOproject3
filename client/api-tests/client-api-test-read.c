@@ -11,11 +11,13 @@ int main(int argc, char** argv) {
         printf("Usage: %s sock_path\n", argv[0]);
         exit(0);
     }
-    char readBuffer[10] = {0};
+    //char readBuffer[10] = {0};
     assert(tfsMount(argv[1]) == 0);
     assert(tfsCreate("abc", RW, READ) == 0);
     int fd = -1;
+    
     assert((fd = tfsOpen("abc", RW)) == 0);
+    /*
     assert(tfsWrite(fd, "12345", 5) == 0);
     
     printf("Test: read full file content");
@@ -41,7 +43,7 @@ int main(int argc, char** argv) {
     assert((fd = tfsOpen("abc", WRITE)) == 0);
     assert(tfsRead(fd, readBuffer, 6) == TECNICOFS_ERROR_INVALID_MODE);
 
-
+    */
     assert(tfsDelete("abc") == 0);
     assert(tfsUnmount() == 0);
 
