@@ -141,7 +141,7 @@ int serverRename(char *arg1, char *arg2, struct ucred ucred) {
         } else
             returnValue = TECNICOFS_ERROR_FILE_ALREADY_EXISTS;  
     } else
-    returnValue = TECNICOFS_ERROR_FILE_NOT_FOUND;
+        returnValue = TECNICOFS_ERROR_FILE_NOT_FOUND;
     return returnValue;
 }
 
