@@ -11,6 +11,8 @@ int tfsMount(char *adress){
     int servlen;
     char *total_path;
     total_path = (char*)malloc(sizeof(char)*(strlen(adress)+5));
+    if(!total_path)
+        perror("tfsMount: failed to allocate");
     strcpy(total_path,"/tmp/");
     strcat(total_path,adress);
 
@@ -40,9 +42,11 @@ int tfsMount(char *adress){
 int tfsComunicate(char *command,int len){
     int returnValue;
 
-    write(sockfd, command, len);
+    if((write(sockfd, command, len)) != len)
+        perror("tfsComunicate: failed to write");
 
-    read(sockfd, &returnValue, sizeof(int));
+    if((read(sockfd, &returnValue, sizeof(int))) < 0)
+        perror("tfsComunicate: failed to write");
     return returnValue;
 }
 
@@ -50,6 +54,8 @@ int tfsComunicate(char *command,int len){
 int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions) {
     int len = strlen(filename) + 6;/* 6 is counting with spaces and \0 in the end */
     char *command = (char*) malloc(sizeof(char) * len);
+    if(!command)
+        perror("tfsCreate: failed to allocate");
     sprintf(command, "c %s %d%d", filename, ownerPermissions, othersPermissions);
   
     return tfsComunicate(command,len);
@@ -59,6 +65,8 @@ int tfsCreate(char *filename, permission ownerPermissions, permission othersPerm
 int tfsDelete(char *filename) {
     int len = strlen(filename) + 3;
     char *command = (char*) malloc(sizeof(char) * len);
+    if(!command)
+        perror("tfsDelete: failed to allocate");
     sprintf(command, "d %s", filename);
 
     return tfsComunicate(command,len);
@@ -69,7 +77,8 @@ int tfsRename(char *filenameOld, char *filenameNew) {
     int len = strlen(filenameOld) + strlen(filenameNew) + 4;
     char *command = (char*) malloc(sizeof(char) * len);
     sprintf(command, "r %s %s", filenameOld, filenameNew);
-
+    if(!command)
+        perror("tfsRename: failed to allocate");
     return tfsComunicate(command,len);
 }
 
@@ -77,6 +86,8 @@ int tfsRename(char *filenameOld, char *filenameNew) {
 int tfsOpen(char *filename,permission mode){
     int len = strlen(filename) + 5;
     char *command = (char*) malloc(sizeof(char) * len);
+    if(!command)
+        perror("tfsOpen: failed to allocate");
     sprintf(command, "o %s %d", filename, mode);
   
     return tfsComunicate(command,len);
@@ -88,6 +99,8 @@ int tfsClose(int fd){
     sprintf(fdinString,"%d",fd);
     int len = strlen(fdinString) + 3;
     char *command = (char*) malloc(sizeof(char) * len);
+    if(!command)
+        perror("tfsClose: failed to allocate");
     
     sprintf(command, "x %d", fd);
    
@@ -96,17 +109,21 @@ int tfsClose(int fd){
 
 /* Reads an opened file */
 int tfsRead(int fd, char *buffer, int len){
+    int returnValue;
     char string[12*2+1];/* max size of two int's in characters */
     sprintf(string,"%d %d",fd,len);
     int commandlen = strlen(string) + 3;
     char *command = (char*) malloc(sizeof(char) * commandlen);
+    if(!command)
+        perror("tfsRead: failed to allocate");
     sprintf(command, "l %d %d", fd, len);
 
-    /* first comunication to receive the file content */
-    write(sockfd, command, commandlen);
-    read(sockfd,buffer,len);
-    
-    return tfsComunicate('\0',0);/* comunicates nothing just to wait for the return value*/
+    /* first comunication to receive the error value */
+    if((returnValue = tfsComunicate(command,commandlen)) >= 0)
+        if((read(sockfd,buffer,len)) < 0) /* receives buffer */
+            perror("tfsRead: failed to read");
+
+    return returnValue;/* comunicates nothing just to wait for the return value*/
 }
 
 /* Writes an opened file */
@@ -121,6 +138,8 @@ int tfsWrite(int fd,char *buffer,int len){
         commandlen += strlen(buffer);
 
     char *command = (char*) malloc(sizeof(char) * commandlen);
+    if(!command)
+        perror("tfsWrite: failed to allocate");
     
     sprintf(command, "w %d ", fd);
     strncat(command,buffer,len);/* max size of buffer writen is len */

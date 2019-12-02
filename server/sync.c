@@ -20,8 +20,7 @@ void init() {
     /* initializes lockers for de vector of bst's */
 	lock = (pthread_rwlock_t*)malloc(numberBuckets*sizeof(pthread_rwlock_t));
     if(!lock){
-		perror("failed to allocate vector of lockers");
-		exit(EXIT_FAILURE);
+		err_dump("failed to allocate vector of lockers");
     }
     inode_table_init();
 	int i;
@@ -42,7 +41,7 @@ void init() {
     servlen = strlen(serv_addr.sun_path) + sizeof(serv_addr.sun_family);
 
     if (bind(sockfd, (struct sockaddr *) &serv_addr, servlen) < 0)
-        err_dump("server, can't bind local address");
+        err_dump("server: can't bind local address");
 }
 
 void destroy() {

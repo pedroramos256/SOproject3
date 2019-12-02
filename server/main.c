@@ -65,13 +65,14 @@ void execution_time(struct timeval start, struct timeval end) {
 int verify_permission(int iNumber,permission p,struct ucred ucred){
     uid_t UID;
     permission ownerPerm, othersPerm;
+    /*access to UID of process of the client who created the fd and it's permissions*/
     inode_get(iNumber,&UID,&ownerPerm,&othersPerm,NULL,0);
 
     return (UID == ucred.uid && (ownerPerm == RW || ownerPerm == p)) || 
         (UID != ucred.uid && (othersPerm == RW || othersPerm == p));  
 }
 
-
+/*verifies if vector of opened files if full*/
 int isFull(openedFile openedFiles[]){
     for(int i = 0;i < MAX_OPENED_FILES;i++)
         if(openedFiles[i] == NULL)return 0;
@@ -97,6 +98,7 @@ openedFile getFile(openedFile openedFiles[],int iNumber){
     return NULL;
 }
 
+/*creates a file with inputs received from client*/ 
 int serverCreate(char *arg1, char *arg2, struct ucred ucred) {
     permission ownerPerm, othersPerm;
     int iNumber, returnValue = 0;
@@ -110,6 +112,7 @@ int serverCreate(char *arg1, char *arg2, struct ucred ucred) {
     return returnValue;
 }
 
+/*deletes a file if it is existent and if client has permissions to do it.*/
 int serverDelete(char *arg1, struct ucred ucred) {
     int iNumber, returnValue = 0;
     uid_t UID;
@@ -126,6 +129,8 @@ int serverDelete(char *arg1, struct ucred ucred) {
     return returnValue;
 }
 
+/*renames a file if old one is existent and new if is not; 
+  also if client has permissions to do it.*/
 int serverRename(char *arg1, char *arg2, struct ucred ucred) {
     int searchResult1, searchResult2, returnValue = 0;
     uid_t UID;
@@ -145,6 +150,8 @@ int serverRename(char *arg1, char *arg2, struct ucred ucred) {
     return returnValue;
 }
 
+/* opens file passed as an argument if it exists, the client still has not reached
+   the max number of opened files and if he has permission to open it. */
 int serverOpen(char *arg1, char *arg2, openedFile openedFiles[], struct ucred ucred) {
     int iNumber, returnValue = 0;
     openedFile file;
@@ -153,6 +160,8 @@ int serverOpen(char *arg1, char *arg2, openedFile openedFiles[], struct ucred uc
             if((file = getFile(openedFiles,iNumber)) == NULL) {
                 if (verify_permission(iNumber,atoi(arg2),ucred)) {
                     file = (openedFile)malloc(sizeof(struct openedFile));
+                    if(!file)
+                        err_dump("serverOpen: failed to allocate");
                     file->inumber = iNumber;
                     file->p = atoi(arg2);
                     returnValue = insertFile(openedFiles,file);
@@ -167,6 +176,7 @@ int serverOpen(char *arg1, char *arg2, openedFile openedFiles[], struct ucred uc
     return returnValue;
 }
 
+/* closes a file if it is previously opened */
 int serverClose(char *arg1, openedFile openedFiles[]) {
     int fd, returnValue = 0;
     fd = atoi(arg1);
@@ -178,13 +188,16 @@ int serverClose(char *arg1, openedFile openedFiles[]) {
     return returnValue;
 }
 
-int serverRead(char *arg1, char *arg2, openedFile openedFiles[], int socket, char *buffer) {
+/* reads a file if it is opened and permission is READ or RW */
+void serverRead(char *arg1, char *arg2, openedFile openedFiles[], int socket, char *buffer) {
     int fd, len, returnValue;
     char * fileToSend;
     fd = atoi(arg1);
     len = atoi(arg2);
     openedFile file;
     fileToSend = (char*)malloc(sizeof(char)*len);
+    if(!fileToSend)
+        err_dump("serverRead: failed to allocate");
     if((file = openedFiles[fd]) != NULL) {
         if (file->p != READ && file->p != RW)
             returnValue = TECNICOFS_ERROR_INVALID_MODE;
@@ -197,11 +210,15 @@ int serverRead(char *arg1, char *arg2, openedFile openedFiles[], int socket, cha
         }   
     } else 
         returnValue = TECNICOFS_ERROR_FILE_NOT_OPEN;
-    write(socket,fileToSend,len);
-    read(socket,buffer,0);
-    return returnValue;
+    if((write(socket, &returnValue, sizeof(int))) != sizeof(int))
+        err_dump("serverRead: failed to write");
+    if(returnValue >= 0)
+        /* copies the content of opened file to fileToSend, with max dimension len */
+        if((write(socket,fileToSend,len)) != len)
+            err_dump("serverRead: failed to write");
 }
 
+/* writes in a file if it is opened and permission is WRITE or RW */
 int serverWrite(char *arg1, char *arg2, openedFile openedFiles[]) {
     int returnValue, fd;
     fd = atoi(arg1);
@@ -235,19 +252,19 @@ void *give_receive_order(void *sockfd){
 
     len = sizeof(struct ucred);
     if(getsockopt(socket, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1)
-        err_dump("give_receive_order: read UID error");
+        pthread_exit(NULL);
     if((stream = fdopen(socket, "r")) == NULL)
-        err_dump("give_receive_order: fdopen failure");
+        pthread_exit(NULL);
     for (;;) {
         returnValue = 0;
         n = getdelim(&buffer, &max, '\0', stream);
         /* Lê uma linha do socket */
-        if (n == -1) {
+        if (feof(stream)) {
             close(socket);
             return NULL;
         }
         else if (n < 0)
-            err_dump("give_receive_order: readline error");
+            pthread_exit(NULL);
         else {
             sscanf(buffer, "%c %s %s", &token, arg1, arg2);
             switch(token) {
@@ -267,17 +284,20 @@ void *give_receive_order(void *sockfd){
                     returnValue = serverClose(arg1, openedFiles);
                     break;
                 case 'l':
-                    returnValue = serverRead(arg1, arg2, openedFiles, socket, buffer);
+                    serverRead(arg1, arg2, openedFiles, socket, buffer);
                     break;
                 case 'w':
                     returnValue = serverWrite(arg1, arg2, openedFiles);
                     break;
             }
-            write(socket, &returnValue, sizeof(int));
+            if(token != 'l')
+                if((write(socket, &returnValue, sizeof(int))) != sizeof(int))
+                    err_dump("give_receive_order: failed to write");
         }
     }
 }
 
+/* function called by sigactio */
 void terminate_server(int signum) {
     return;
 }
@@ -303,6 +323,8 @@ int main(int argc, char* argv[]) {
     parseArgs(argc, argv);
     /*using files given in arguments*/
     total_path = (char *)malloc(sizeof(char)*(strlen(argv[1])+6));
+    if(!total_path)
+        err_dump("main: failed to allocate total_path");
     sprintf(total_path, "/tmp/%s", argv[1]);
     output = fopen(argv[2], "w");
     if (output == NULL) {   
@@ -315,8 +337,9 @@ int main(int argc, char* argv[]) {
     fs = new_tecnicofs();
     /*initializes the thread lockers and semaphores needed with validation */
     init(); 
+    if(listen(sockfd, MAXCLIENTS) < 0)
+        err_dump("server: listen failure");
     gettimeofday(&start, NULL);
-    listen(sockfd, MAXCLIENTS);
     for (;;) {
         clilen = sizeof(cli_addr);
         newsockfd = accept(sockfd,(struct sockaddr *) &cli_addr, &clilen);
@@ -324,23 +347,31 @@ int main(int argc, char* argv[]) {
         if (newsockfd < 0)
             break;
             
+        /* allows only main thread to terminate the server */
         error = pthread_sigmask(SIG_BLOCK, &signal_mask, NULL);
-        if (error != 0)
-            err_dump("server: mask error");
-        if(pthread_create(&tid[num_clients], NULL, give_receive_order, (void *)(intptr_t)newsockfd) != 0)
-            err_dump("server: thread creation error");
-        error = pthread_sigmask(SIG_UNBLOCK, &signal_mask, NULL);
-        if (error != 0)
-            err_dump("server: mask error");
-        else {
-            num_clients++;
+        if (error != 0) {
+            printf("server: mask error\n");
+            continue;
         }
+        if(pthread_create(&tid[num_clients], NULL, give_receive_order, (void *)(intptr_t)newsockfd) != 0) {
+            printf("server: thread creation error\n");
+            continue;
+        }
+        error = pthread_sigmask(SIG_UNBLOCK, &signal_mask, NULL);
+        if (error != 0) {
+            printf("server: mask error\n");
+            continue;
+        }
+        num_clients++;
     }
+    
     for (int i = 0; i < num_clients; i++) {
-        pthread_join(tid[i], NULL);
+        if(pthread_join(tid[i], NULL) != 0)
+            err_dump("server: failed tojoin client threads");
     }
     gettimeofday(&end, NULL);
-    close(sockfd);
+    if((close(sockfd)) != 0)
+        return TECNICOFS_ERROR_OTHER;
     /*destroys the lockers*/
     destroy();
     /* instead of stdout, it is used a file as output */
